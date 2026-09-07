@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#
+# grace-upload — publish an HTML artifact to the grace host.
+#
+# Usage:
+#   GRACE_TOKEN=<token> scripts/grace-upload <path>
+#
+# <path> may be:
+#   - a single .html/.htm file
+#   - an archive: .zip, .tar, .tar.gz, .tgz
+#   - a directory (packaged as .tar.gz automatically)
+#
+# Reads the token from $GRACE_TOKEN. Prints the
+# resulting public URL on the last line of stdout; errors go to stderr.
+#
+set -euo pipefail
+
+if [[ -z "${GRACE_TOKEN:-}" ]]; then
+  echo "error: GRACE_TOKEN is not set" >&2
+  exit 1
+fi
+
+path="${1:?usage: grace-upload <path-to-html-file-or-directory>}"
+if [[ ! -e "$path" ]]; then
+  echo "error: no such file or directory: $path" >&2
+  exit 1
+fi
+
+tmp=""
+trap '[[ -n "$tmp" ]] && rm -f "$tmp"' EXIT
+
+upload_path="$path"
+if [[ -d "$path" ]]; then
+  tmp="$(mktemp --suffix=.tar.gz)"
+  tar -czf "$tmp" -C "$path" .
+  upload_path="$tmp"
+fi
+
+resp=""
+if ! resp="$(curl --fail-with-body -sS --max-time 120 \
+  -H "Authorization: Bearer $GRACE_TOKEN" \
+  -F "file=@$upload_path" \
+  "$GRACE_URL/api/upload")"; then
+  [[ -n "$resp" ]] && printf '%s\n' "$resp" >&2
+  exit 1
+fi
+
+# Extract the url field. Prefer jq, fall back to a small python one-liner,
+# then a sed regex — so the script has no hard dependency on either.
+if command -v jq >/dev/null 2>&1; then
+  echo "$resp" | jq -r .url
+elif command -v python3 >/dev/null 2>&1; then
+  echo "$resp" | python3 -c 'import sys, json; print(json.load(sys.stdin)["url"])'
+else
+  echo "$resp" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+fi
