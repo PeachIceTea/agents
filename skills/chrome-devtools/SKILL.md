@@ -27,11 +27,18 @@ Page-scoped tools take the page number as first argument:
 
 ```sh
 chrome-devtools list_pages
+chrome-devtools new_page "https://example.com" [--background] [--isolatedContext name]
+chrome-devtools close_page 1
 chrome-devtools navigate_page 1 --url "https://example.com"
 chrome-devtools take_screenshot 1 --filePath out.png
 chrome-devtools evaluate_script "() => document.title" --pageId 1
 chrome-devtools click 1 <element-uid>
 ```
+
+Tab management: `new_page <url>` opens a tab (add `--background` to open without
+focusing it); `close_page <pageId>` closes one — but never the last open page.
+`close_page` takes the index from `list_pages`, which shifts after opening or
+closing tabs, so re-list before closing if you do several tab operations.
 
 `--output-format=json` for programmatic parsing. Full tool list:
 `chrome-devtools --help`.
