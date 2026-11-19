@@ -3,6 +3,7 @@ name: chrome-devtools
 description: Use when the user asks to automate, inspect, screenshot, or debug
   a web page in Chrome, or mentions the chrome-devtools CLI / chrome-devtools-mcp.
   Connects the CLI to the user's running Flatpak Chrome.
+disable-model-invocation: true
 ---
 
 # Chrome DevTools CLI
